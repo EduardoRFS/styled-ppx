@@ -99,7 +99,8 @@ let render_length =
   | `Vi(_n) => raise(Unsupported_feature)
   | `Vmax(n) => [%expr `vmax([%e render_number(n)])]
   | `Vmin(n) => [%expr `vmin([%e render_number(n)])]
-  | `Vw(n) => [%expr `vw([%e render_number(n)])];
+  | `Vw(n) => [%expr `vw([%e render_number(n)])]
+  | `Zero => [%expr `zero];
 let render_percentage = render_number;
 
 let render_length_percentage =
@@ -144,6 +145,102 @@ let box_sizing =
   apply(property_box_sizing, variants_to_expression, [%expr Css.boxSizing]);
 // TODO: bs-css doesn't support columnWidth
 // let column_width =
+
+// css-box-3
+let margin_top =
+  apply(
+    property_margin_top,
+    fun
+    | `Auto => variants_to_expression(`Auto)
+    | `Length_percentage(lp) => render_length_percentage(lp),
+    [%expr Css.marginTop],
+  );
+let margin_right =
+  apply(
+    property_margin_right,
+    margin_top.value_of_ast,
+    [%expr Css.marginRight],
+  );
+let margin_bottom =
+  apply(
+    property_margin_bottom,
+    margin_top.value_of_ast,
+    [%expr Css.marginBottom],
+  );
+let margin_left =
+  apply(
+    property_margin_left,
+    margin_top.value_of_ast,
+    [%expr Css.marginLeft],
+  );
+let margin =
+  transform(
+    property_margin,
+    List.map(margin_top.value_of_ast),
+    fun
+    | [all] => [[%expr Css.margin([%e all])]]
+    | [v, h] => [[%expr Css.margin2(~v=[%e v], ~h=[%e h])]]
+    | [t, h, b] => [
+        [%expr Css.margin3(~top=[%e t], ~h=[%e h], ~bottom=[%e b])],
+      ]
+    | [t, r, b, l] => [
+        [%expr
+          Css.margin4(
+            ~top=[%e t],
+            ~right=[%e r],
+            ~bottom=[%e b],
+            ~left=[%e l],
+          )
+        ],
+      ]
+    | _ => failwith("unreachable"),
+  );
+let padding_top =
+  apply(
+    property_padding_top,
+    render_length_percentage,
+    [%expr Css.paddingTop],
+  );
+let padding_right =
+  apply(
+    property_padding_right,
+    padding_top.value_of_ast,
+    [%expr Css.paddingRight],
+  );
+let padding_bottom =
+  apply(
+    property_padding_bottom,
+    padding_top.value_of_ast,
+    [%expr Css.paddingBottom],
+  );
+let padding_left =
+  apply(
+    property_padding_left,
+    padding_top.value_of_ast,
+    [%expr Css.paddingLeft],
+  );
+let padding =
+  transform(
+    property_padding,
+    List.map(padding_top.value_of_ast),
+    fun
+    | [all] => [[%expr Css.padding([%e all])]]
+    | [v, h] => [[%expr Css.padding2(~v=[%e v], ~h=[%e h])]]
+    | [t, h, b] => [
+        [%expr Css.padding3(~top=[%e t], ~h=[%e h], ~bottom=[%e b])],
+      ]
+    | [t, r, b, l] => [
+        [%expr
+          Css.padding4(
+            ~top=[%e t],
+            ~right=[%e r],
+            ~bottom=[%e b],
+            ~left=[%e l],
+          )
+        ],
+      ]
+    | _ => failwith("unreachable"),
+  );
 
 // css-flexbox-1
 // using id() because refmt
@@ -220,6 +317,17 @@ let properties = [
   ("max-width", found(max_width)),
   ("max-height", found(max_height)),
   ("box-sizing", found(box_sizing)),
+  // css-box-3
+  ("margin-top", found(margin_top)),
+  ("margin-right", found(margin_right)),
+  ("margin-bottom", found(margin_bottom)),
+  ("margin-left", found(margin_left)),
+  ("margin", found(margin)),
+  ("padding-top", found(padding_top)),
+  ("padding-right", found(padding_right)),
+  ("padding-bottom", found(padding_bottom)),
+  ("padding-left", found(padding_left)),
+  ("padding", found(padding)),
   // css-flexbox-1
   ("flex-direction", found(flex_direction)),
   ("flex-wrap", found(flex_wrap)),
